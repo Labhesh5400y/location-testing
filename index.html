@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>My Location</title>
+<style>
+  body { font-family: sans-serif; max-width: 400px; margin: 50px auto; padding: 0 20px; text-align: center; }
+  button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+  #output { font-size: 20px; margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<button onclick="getLocation()">Get Location</button>
+<div id="output"></div>
+
+<script>
+function getLocation() {
+  navigator.geolocation.getCurrentPosition(
+    function (pos) {
+      document.getElementById('output').textContent =
+        `Lat: ${pos.coords.latitude}, Lon: ${pos.coords.longitude}`;
+    },
+    function (err) {
+      document.getElementById('output').textContent = "Location blocked: " + err.message;
+    }
+  );
+}
+</script>
+
+</body>
+</html>
