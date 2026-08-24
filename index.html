@@ -1,32 +1,448 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<title>My Location</title>
-<style>
-  body { font-family: sans-serif; max-width: 400px; margin: 50px auto; padding: 0 20px; text-align: center; }
-  button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
-  #output { font-size: 20px; margin-top: 20px; }
-</style>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>My Location</title>
+
+
+    <!-- MapLibre CSS -->
+    <link
+        href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css"
+        rel="stylesheet"
+    >
+
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 0 20px;
+            text-align: center;
+        }
+
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+
+        button {
+            padding: 12px 25px;
+            font-size: 17px;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+        }
+
+
+        #map {
+            width: 100%;
+            height: 500px;
+            margin-top: 20px;
+            border-radius: 10px;
+        }
+
+
+        #output {
+            margin-top: 20px;
+            padding: 15px;
+            font-size: 18px;
+            line-height: 1.7;
+        }
+
+    </style>
+
 </head>
+
+
 <body>
 
-<button onclick="getLocation()">Get Location</button>
-<div id="output"></div>
+    <h1>My Location</h1>
 
-<script>
-function getLocation() {
-  navigator.geolocation.getCurrentPosition(
-    function (pos) {
-      document.getElementById('output').textContent =
-        `Lat: ${pos.coords.latitude}, Lon: ${pos.coords.longitude}`;
-    },
-    function (err) {
-      document.getElementById('output').textContent = "Location blocked: " + err.message;
-    }
-  );
-}
-</script>
+
+    <button onclick="getLocation()">
+        📍 My Location
+    </button>
+
+
+    <div id="map"></div>
+
+
+    <div id="output">
+        Click "My Location" to find your current location.
+    </div>
+
+
+    <!-- MapLibre JavaScript -->
+    <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+
+
+    <script>
+
+        // =====================================================
+        // DEFAULT LOCATION
+        // =====================================================
+
+        const DEFAULT_LONGITUDE = 78.9629;
+        const DEFAULT_LATITUDE = 20.5937;
+
+
+        // =====================================================
+        // CREATE MAP
+        // =====================================================
+
+        const map = new maplibregl.Map({
+
+            container: "map",
+
+            style:
+                "https://tiles.openfreemap.org/styles/liberty",
+
+            center: [
+                DEFAULT_LONGITUDE,
+                DEFAULT_LATITUDE
+            ],
+
+            zoom: 4
+
+        });
+
+
+        // =====================================================
+        // MAP CONTROLS
+        // =====================================================
+
+        map.addControl(
+            new maplibregl.NavigationControl()
+        );
+
+
+        // =====================================================
+        // CURRENT LOCATION MARKER
+        // =====================================================
+
+        let currentMarker = null;
+
+
+        // =====================================================
+        // GET LOCATION
+        // =====================================================
+
+        function getLocation() {
+
+            const output =
+                document.getElementById("output");
+
+
+            output.innerHTML =
+                "📍 Getting your current location...";
+
+
+            // Check browser support
+
+            if (!navigator.geolocation) {
+
+                output.innerHTML =
+                    "❌ Your browser does not support geolocation.";
+
+                return;
+            }
+
+
+            // Get GPS position
+
+            navigator.geolocation.getCurrentPosition(
+
+                async function(position) {
+
+                    // =========================================
+                    // COORDINATES
+                    // =========================================
+
+                    const latitude =
+                        position.coords.latitude;
+
+                    const longitude =
+                        position.coords.longitude;
+
+
+                    console.log(
+                        "Latitude:",
+                        latitude
+                    );
+
+                    console.log(
+                        "Longitude:",
+                        longitude
+                    );
+
+
+                    // =========================================
+                    // MOVE MAP
+                    // =========================================
+
+                    map.flyTo({
+
+                        center: [
+                            longitude,
+                            latitude
+                        ],
+
+                        zoom: 16,
+
+                        essential: true
+
+                    });
+
+
+                    // =========================================
+                    // REMOVE OLD MARKER
+                    // =========================================
+
+                    if (currentMarker) {
+
+                        currentMarker.remove();
+
+                    }
+
+
+                    // =========================================
+                    // CREATE MARKER
+                    // =========================================
+
+                    currentMarker =
+                        new maplibregl.Marker()
+
+                            .setLngLat([
+                                longitude,
+                                latitude
+                            ])
+
+                            .setPopup(
+                                new maplibregl.Popup()
+                                    .setHTML(
+                                        "<b>📍 Your Current Location</b>"
+                                    )
+                            )
+
+                            .addTo(map);
+
+
+                    // =========================================
+                    // SHOW COORDINATES
+                    // =========================================
+
+                    output.innerHTML = `
+
+                        <strong>
+                            📍 Current Location
+                        </strong>
+
+                        <br><br>
+
+                        Latitude:
+                        ${latitude}
+
+                        <br>
+
+                        Longitude:
+                        ${longitude}
+
+                        <br><br>
+
+                        Getting address...
+
+                    `;
+
+
+                    // =========================================
+                    // SEND TO FLASK
+                    // =========================================
+
+                    try {
+
+                        const response =
+                            await fetch(
+                                `/location?lat=${latitude}&lon=${longitude}`
+                            );
+
+
+                        const data =
+                            await response.json();
+
+
+                        console.log(
+                            "BigDataCloud response:",
+                            data
+                        );
+
+
+                        if (data.error) {
+
+                            output.innerHTML += `
+
+                                <br><br>
+
+                                ❌ ${data.error}
+
+                            `;
+
+                            return;
+                        }
+
+
+                        // =====================================
+                        // DISPLAY RESULT
+                        // =====================================
+
+                        output.innerHTML = `
+
+                            <strong>
+                                📍 Current Location
+                            </strong>
+
+                            <br><br>
+
+                            Latitude:
+                            ${data.latitude}
+
+                            <br>
+
+                            Longitude:
+                            ${data.longitude}
+
+                            <br><br>
+
+                            City:
+                            ${data.city || "Not available"}
+
+                            <br>
+
+                            Country:
+                            ${data.country || "Not available"}
+
+                        `;
+
+
+                        // =====================================
+                        // UPDATE POPUP
+                        // =====================================
+
+                        currentMarker
+                            .getPopup()
+                            .setHTML(`
+
+                                <b>
+                                    📍 Your Current Location
+                                </b>
+
+                                <br><br>
+
+                                City:
+                                ${data.city || "Not available"}
+
+                                <br>
+
+                                Country:
+                                ${data.country || "Not available"}
+
+                                <br><br>
+
+                                Latitude:
+                                ${latitude}
+
+                                <br>
+
+                                Longitude:
+                                ${longitude}
+
+                            `);
+
+
+                    } catch (error) {
+
+                        console.error(
+                            "Flask connection error:",
+                            error
+                        );
+
+
+                        output.innerHTML += `
+
+                            <br><br>
+
+                            ❌ Could not connect
+                            to Flask server.
+
+                        `;
+
+                    }
+
+                },
+
+
+                // =============================================
+                // LOCATION ERROR
+                // =============================================
+
+                function(error) {
+
+                    let message;
+
+
+                    if (error.code === 1) {
+
+                        message =
+                            "Location permission was denied.";
+
+                    } else if (error.code === 2) {
+
+                        message =
+                            "Location could not be determined.";
+
+                    } else if (error.code === 3) {
+
+                        message =
+                            "Location request timed out.";
+
+                    } else {
+
+                        message =
+                            "Unknown location error.";
+
+                    }
+
+
+                    document.getElementById(
+                        "output"
+                    ).innerHTML = "❌ " + message;
+
+                },
+
+
+                // =============================================
+                // GPS SETTINGS
+                // =============================================
+
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+
+            );
+
+        }
+
+    </script>
 
 </body>
+
 </html>
